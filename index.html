@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini AI Chat</title>
+    <!-- Google Fonts for Material Design -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Material 3 Light Theme Color Palette */
+            --md-sys-color-primary: #0061a4;
+            --md-sys-color-on-primary: #ffffff;
+            --md-sys-color-primary-container: #d1e4ff;
+            --md-sys-color-on-primary-container: #001d36;
+            --md-sys-color-secondary: #535f70;
+            --md-sys-color-on-secondary: #ffffff;
+            --md-sys-color-secondary-container: #d7e3f7;
+            --md-sys-color-on-secondary-container: #101c2b;
+            --md-sys-color-tertiary: #6b5778;
+            --md-sys-color-on-tertiary: #ffffff;
+            --md-sys-color-tertiary-container: #f2daff;
+            --md-sys-color-on-tertiary-container: #251431;
+            --md-sys-color-error: #ba1a1a;
+            --md-sys-color-error-container: #ffdad6;
+            --md-sys-color-on-error-container: #410002;
+            --md-sys-color-background: #fdfcff;
+            --md-sys-color-on-background: #1a1c1e;
+            --md-sys-color-surface: #fdfcff;
+            --md-sys-color-on-surface: #1a1c1e;
+            --md-sys-color-surface-variant: #dfe3eb;
+            --md-sys-color-on-surface-variant: #43474e;
+            --md-sys-color-outline: #73777f;
+            --md-sys-color-shadow: #000000;
+            --md-sys-color-surface-container-highest: #e1e2e6;
+            --md-sys-color-surface-container-low: #f3f4f7;
+        }
+
+        body {
+            font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+            background-color: var(--md-sys-color-surface-container-low);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        #chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 95vh;
+            max-height: 1000px;
+            background-color: var(--md-sys-color-surface);
+            border-radius: 28px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #header {
+            background-color: var(--md-sys-color-surface);
+            padding: 12px 8px 12px 24px; /* Updated Padding */
+            font-weight: 500;
+            border-bottom: 1px solid var(--md-sys-color-surface-variant);
+            display: flex; /* Updated Flexbox */
+            justify-content: space-between; /* Updated Flexbox */
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        #header .title {
+            font-size: 1.4em;
+            margin: 0;
+        }
+
+        #settings-button {
+            z-index: 11;
+            background: none;
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+        #settings-button:hover {
+            background-color: rgba(0,0,0,0.08);
+        }
+
+        #settings-panel {
+            position: absolute;
+            top: 68px; /* Updated Position */
+            right: 16px;
+            background-color: var(--md-sys-color-surface-container-highest);
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 20px; /* Increased Padding */
+            z-index: 10;
+            width: 300px;
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
+        }
+        #settings-panel.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        
+        /* === Styles for Form Fields === */
+        .field-container {
+             margin-bottom: 20px;
+        }
+        
+        /* Style for static label (used for select) */
+        .field-container label.static-label {
+            display: block;
+            font-size: 0.85em;
+            color: var(--md-sys-color-primary);
+            margin-bottom: 6px;
+            padding-left: 4px;
+            font-weight: 500;
+        }
+        .field-container select {
+            width: 100%;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--md-sys-color-outline);
+            background: transparent;
+            font-size: 1em;
+            color: var(--md-sys-color-on-surface);
+            box-sizing: border-box;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='24' viewBox='0 -960 960 960' width='24'%3E%3Cpath fill='%2343474E' d='M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+         .field-container select:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            border-width: 2px;
+            padding: 15px; /* Adjust padding to account for border */
+        }
+
+        /* Style for floating label (used for input) */
+        .m3-field {
+            position: relative;
+        }
+        .m3-field label {
+            position: absolute;
+            top: 50%;
+            left: 16px;
+            transform: translateY(-50%);
+            font-size: 1em;
+            color: var(--md-sys-color-on-surface-variant);
+            background-color: var(--md-sys-color-surface-container-highest);
+            padding: 0 4px;
+            transition: all 0.2s ease;
+            pointer-events: none;
+        }
+        .m3-field input {
+            width: 100%;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--md-sys-color-outline);
+            background: transparent;
+            font-size: 1em;
+            color: var(--md-sys-color-on-surface);
+            box-sizing: border-box;
+        }
+        .m3-field input:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            border-width: 2px;
+            padding: 15px;
+        }
+        .m3-field input:focus + label,
+        .m3-field input:not(:placeholder-shown) + label {
+            top: 0;
+            left: 12px;
+            font-size: 0.75em;
+            color: var(--md-sys-color-primary);
+        }
+        /* === End Styles for Form Fields === */
+
+        #chat-box {
+            flex-grow: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #chat-box::-webkit-scrollbar { width: 6px; }
+        #chat-box::-webkit-scrollbar-track { background: transparent; }
+        #chat-box::-webkit-scrollbar-thumb { background: var(--md-sys-color-surface-variant); border-radius: 3px; }
+        #chat-box::-webkit-scrollbar-thumb:hover { background: var(--md-sys-color-outline); }
+
+        .message {
+            padding: 12px 18px;
+            border-radius: 20px;
+            max-width: 80%;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background-color: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            align-self: flex-end;
+            border-bottom-right-radius: 6px;
+        }
+        .gemini-message {
+            background-color: var(--md-sys-color-surface-container-highest);
+            color: var(--md-sys-color-on-surface-variant);
+            align-self: flex-start;
+            border-bottom-left-radius: 6px;
+        }
+        .gemini-message.loading::after {
+            content: '...';
+            display: inline-block;
+            animation: ellipsis 1.2s infinite steps(3, end);
+        }
+        @keyframes ellipsis { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
+
+        .error-message {
+            background-color: var(--md-sys-color-error-container);
+            color: var(--md-sys-color-on-error-container);
+            align-self: center;
+            text-align: center;
+            border-radius: 12px;
+            font-size: 0.9em;
+        }
+        .error-message strong { color: var(--md-sys-color-error); }
+
+        #input-container {
+            border-top: 1px solid var(--md-sys-color-surface-variant);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #user-input {
+            flex-grow: 1;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 28px;
+            padding: 14px 20px;
+            font-size: 1em;
+            background-color: transparent;
+            transition: border-color 0.2s;
+        }
+        #user-input:focus { outline: none; border-color: var(--md-sys-color-primary); }
+        #user-input:disabled { background-color: var(--md-sys-color-surface-container-low); }
+
+        #send-button {
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            border: none;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        #send-button:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        #send-button:active { transform: scale(0.95); }
+        #send-button:disabled { background-color: var(--md-sys-color-surface-variant); cursor: not-allowed; box-shadow: none; }
+    </style>
+</head>
+<body>
+
+    <div id="chat-container">
+        <div id="header">
+            <h1 class="title">Gemini Chat</h1>
+            <button id="settings-button" title="設定">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#43474E"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+            </button>
+        </div>
+
+        <div id="settings-panel">
+            <div class="field-container">
+                <label for="model-select" class="static-label">選擇模型</label>
+                <select id="model-select">
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                    <option value="gemini-2.5-flash-lite" selected>Gemini 2.5 Flash-Lite (預設)</option>
+                    <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                    <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
+                </select>
+            </div>
+            <div class="field-container m3-field">
+                <input type="password" id="api-key-input" placeholder=" "> <!-- placeholder is for floating label trick -->
+                <label for="api-key-input">Google AI API 金鑰</label>
+            </div>
+        </div>
+
+        <div id="chat-box">
+             <div class="message gemini-message">你好！請點擊右上角的設定圖示來輸入 API 金鑰，然後開始對話。</div>
+        </div>
+        <div id="input-container">
+            <input type="text" id="user-input" placeholder="請先輸入 API 金鑰" disabled>
+            <button id="send-button" disabled title="傳送">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#ffffff"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2 .01 7z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const apiKeyInput = document.getElementById('api-key-input');
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const settingsButton = document.getElementById('settings-button');
+        const settingsPanel = document.getElementById('settings-panel');
+        const modelSelect = document.getElementById('model-select');
+        const chatContainer = document.getElementById('chat-container');
+
+        let conversationHistory = [];
+        let selectedModel = 'gemini-2.5-flash-lite';
+        const API_KEY_STORAGE_NAME = 'gemini_api_key';
+
+        // --- Event Listeners ---
+
+        apiKeyInput.addEventListener('input', () => {
+            const apiKey = apiKeyInput.value.trim();
+            localStorage.setItem(API_KEY_STORAGE_NAME, apiKey);
+            if (!apiKey) {
+                localStorage.removeItem(API_KEY_STORAGE_NAME);
+            }
+            updateChatUIState();
+        });
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        settingsButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            settingsPanel.classList.toggle('visible');
+        });
+
+        modelSelect.addEventListener('change', (event) => {
+            selectedModel = event.target.value;
+            const selectedModelName = event.target.options[event.target.selectedIndex].text;
+            displayMessage('system', `模型已切換至 ${selectedModelName}。`, 'error');
+            conversationHistory = [];
+        });
+        
+        window.addEventListener('click', (event) => {
+            if (settingsPanel.classList.contains('visible') && !settingsPanel.contains(event.target) && event.target !== settingsButton) {
+                 settingsPanel.classList.remove('visible');
+            }
+        });
+
+        // --- Functions ---
+
+        function updateChatUIState() {
+            const hasApiKey = apiKeyInput.value.trim() !== '';
+            userInput.disabled = !hasApiKey;
+            sendButton.disabled = !hasApiKey;
+            userInput.placeholder = hasApiKey ? "請在這裡輸入訊息..." : "請先輸入 API 金鑰";
+        }
+
+        function initialize() {
+            const savedApiKey = localStorage.getItem(API_KEY_STORAGE_NAME);
+            if (savedApiKey) {
+                apiKeyInput.value = savedApiKey;
+                apiKeyInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            updateChatUIState();
+            selectedModel = modelSelect.value; // Ensure JS model variable matches HTML on load
+        }
+
+        function displayMessage(sender, text, type = 'text') {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', `${sender}-message`);
+            
+            if (type === 'loading') {
+                messageElement.classList.add('loading');
+                messageElement.textContent = ".";
+            } else if (type === 'error') {
+                 messageElement.classList.add('error-message');
+                 messageElement.innerHTML = `<strong>系統提示：</strong> ${text}`;
+            } else {
+                messageElement.innerHTML = text.replace(/\n/g, '<br>');
+            }
+
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return messageElement;
+        }
+
+        async function sendMessage() {
+            const userText = userInput.value.trim();
+            const apiKey = apiKeyInput.value.trim();
+
+            if (!userText || !apiKey) return;
+
+            settingsPanel.classList.remove('visible');
+            displayMessage('user', userText);
+            conversationHistory.push({ role: "user", parts: [{ text: userText }] });
+            userInput.value = '';
+            sendButton.disabled = true;
+
+            const loadingMessage = displayMessage('gemini', '', 'loading');
+
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
+                const requestBody = {
+                    contents: conversationHistory,
+                    systemInstruction: { parts: { text: "請盡量使用繁體中文來回答" } },
+                    generationConfig: {
+                        temperature: 1,
+                        topP: 0.95,
+                        topK: 64,
+                        maxOutputTokens: 8192,
+                    },
+                    safetySettings: [
+                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }
+                    ]
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody),
+                });
+                
+                chatBox.removeChild(loadingMessage);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    const errorMessage = errorData.error?.message || `請求失敗，狀態碼：${response.status}`;
+                    displayMessage('system', `API 呼叫失敗: ${errorMessage} <br><br>請確認 API 金鑰是否正確或所選模型是否可用。`, 'error');
+                    conversationHistory.pop(); 
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.candidates && data.candidates.length > 0 && data.candidates[0].content) {
+                    const geminiResponse = data.candidates[0].content.parts[0].text;
+                    displayMessage('gemini', geminiResponse);
+                    conversationHistory.push({ role: "model", parts: [{ text: geminiResponse }] });
+                } else {
+                    let feedbackMessage = "API 回應了，但沒有有效的內容。";
+                    if (data.promptFeedback) {
+                        feedbackMessage = `請求被安全設定阻擋，原因：${data.promptFeedback.blockReason}。請嘗試更換提問方式。`;
+                    }
+                    displayMessage('system', feedbackMessage, 'error');
+                    conversationHistory.pop();
+                }
+
+            } catch (error) {
+                if (chatBox.contains(loadingMessage)) {
+                    chatBox.removeChild(loadingMessage);
+                }
+                console.error('與 Gemini API 通訊時發生錯誤:', error);
+                displayMessage('system', `發生無法預期的錯誤：${error.message}`, 'error');
+                conversationHistory.pop();
+            } finally {
+                sendButton.disabled = false;
+                userInput.focus();
+            }
+        }
+        
+        initialize();
+    </script>
+</body>
+</html>
