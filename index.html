@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Marked.js for Markdown Parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
             /* Material 3 Light Theme Color Palette */
@@ -38,24 +40,26 @@
             --md-sys-color-surface-container-low: #f3f4f7;
         }
 
+        html {
+            height: 100%;
+        }
+
         body {
             font-family: 'Roboto', 'Noto Sans TC', sans-serif;
             background-color: var(--md-sys-color-surface-container-low);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
             color: var(--md-sys-color-on-surface);
+            /* Prevent body from scrolling on mobile */
+            height: 100%;
+            overflow: hidden;
         }
 
         #chat-container {
-            width: 90%;
-            max-width: 800px;
-            height: 95vh;
-            max-height: 1000px;
+            width: 100%;
+            height: 100vh;
+            /* Use dvh for better mobile handling, with vh as fallback */
+            height: 100dvh;
             background-color: var(--md-sys-color-surface);
-            border-radius: 28px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
@@ -65,11 +69,11 @@
 
         #header {
             background-color: var(--md-sys-color-surface);
-            padding: 12px 8px 12px 24px; /* Updated Padding */
+            padding: 12px 8px 12px 24px;
             font-weight: 500;
             border-bottom: 1px solid var(--md-sys-color-surface-variant);
-            display: flex; /* Updated Flexbox */
-            justify-content: space-between; /* Updated Flexbox */
+            display: flex;
+            justify-content: space-between;
             align-items: center;
             flex-shrink: 0;
         }
@@ -98,14 +102,16 @@
 
         #settings-panel {
             position: absolute;
-            top: 68px; /* Updated Position */
+            top: 68px;
             right: 16px;
             background-color: var(--md-sys-color-surface-container-highest);
             border-radius: 16px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            padding: 20px; /* Increased Padding */
+            padding: 20px;
             z-index: 10;
-            width: 300px;
+            width: calc(100% - 48px); /* Mobile-first width */
+            max-width: 320px;
+            box-sizing: border-box;
             opacity: 0;
             transform: translateY(-10px) scale(0.95);
             transition: opacity 0.2s ease, transform 0.2s ease;
@@ -122,7 +128,6 @@
              margin-bottom: 20px;
         }
         
-        /* Style for static label (used for select) */
         .field-container label.static-label {
             display: block;
             font-size: 0.85em;
@@ -153,7 +158,6 @@
             padding: 15px; /* Adjust padding to account for border */
         }
 
-        /* Style for floating label (used for input) */
         .m3-field {
             position: relative;
         }
@@ -233,6 +237,53 @@
         }
         @keyframes ellipsis { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
 
+        /* --- Styles for Markdown Content --- */
+        .gemini-message > *:first-child { margin-top: 0; }
+        .gemini-message > *:last-child { margin-bottom: 0; }
+        .gemini-message h1, .gemini-message h2, .gemini-message h3 {
+            margin: 16px 0 8px 0;
+            color: var(--md-sys-color-on-surface);
+        }
+        .gemini-message p { margin: 0 0 10px 0; }
+        .gemini-message ul, .gemini-message ol { padding-left: 24px; margin: 0 0 10px 0;}
+        .gemini-message li { margin-bottom: 4px; }
+        .gemini-message a { color: var(--md-sys-color-primary); text-decoration: none; }
+        .gemini-message a:hover { text-decoration: underline; }
+        .gemini-message code {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: var(--md-sys-color-surface-variant);
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+        .gemini-message pre {
+            background-color: #202124; /* A dark background for code blocks */
+            color: #e8eaed;
+            padding: 16px;
+            border-radius: 12px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .gemini-message pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        .gemini-message table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .gemini-message th, .gemini-message td {
+            border: 1px solid var(--md-sys-color-outline);
+            padding: 8px;
+            text-align: left;
+        }
+        .gemini-message th {
+            background-color: var(--md-sys-color-surface-container-low);
+        }
+        /* --- End Styles for Markdown Content --- */
+
         .error-message {
             background-color: var(--md-sys-color-error-container);
             color: var(--md-sys-color-on-error-container);
@@ -240,6 +291,8 @@
             text-align: center;
             border-radius: 12px;
             font-size: 0.9em;
+            width: fit-content;
+            padding: 12px 18px; /* Ensure padding is consistent */
         }
         .error-message strong { color: var(--md-sys-color-error); }
 
@@ -279,6 +332,27 @@
         #send-button:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         #send-button:active { transform: scale(0.95); }
         #send-button:disabled { background-color: var(--md-sys-color-surface-variant); cursor: not-allowed; box-shadow: none; }
+
+        /* Desktop view adjustments */
+        @media (min-width: 801px) {
+            body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            #chat-container {
+                width: 90%;
+                max-width: 800px;
+                height: 95vh;
+                max-height: 1000px;
+                border-radius: 28px;
+            }
+
+            #settings-panel {
+                width: 300px; /* Restore fixed width for desktop */
+            }
+        }
     </style>
 </head>
 <body>
@@ -287,7 +361,7 @@
         <div id="header">
             <h1 class="title">Gemini Chat</h1>
             <button id="settings-button" title="設定">
-                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#43474E"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#43474E"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
             </button>
         </div>
 
@@ -295,6 +369,7 @@
             <div class="field-container">
                 <label for="model-select" class="static-label">選擇模型</label>
                 <select id="model-select">
+                    <!-- === RESTORED MODEL LIST === -->
                     <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                     <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                     <option value="gemini-2.5-flash-lite" selected>Gemini 2.5 Flash-Lite (預設)</option>
@@ -330,6 +405,7 @@
         const chatContainer = document.getElementById('chat-container');
 
         let conversationHistory = [];
+        // === RESTORED DEFAULT MODEL VARIABLE ===
         let selectedModel = 'gemini-2.5-flash-lite';
         const API_KEY_STORAGE_NAME = 'gemini_api_key';
 
@@ -337,8 +413,9 @@
 
         apiKeyInput.addEventListener('input', () => {
             const apiKey = apiKeyInput.value.trim();
-            localStorage.setItem(API_KEY_STORAGE_NAME, apiKey);
-            if (!apiKey) {
+            if (apiKey) {
+                localStorage.setItem(API_KEY_STORAGE_NAME, apiKey);
+            } else {
                 localStorage.removeItem(API_KEY_STORAGE_NAME);
             }
             updateChatUIState();
@@ -346,7 +423,8 @@
 
         sendButton.addEventListener('click', sendMessage);
         userInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
                 sendMessage();
             }
         });
@@ -363,7 +441,7 @@
             conversationHistory = [];
         });
         
-        window.addEventListener('click', (event) => {
+        document.addEventListener('click', (event) => {
             if (settingsPanel.classList.contains('visible') && !settingsPanel.contains(event.target) && event.target !== settingsButton) {
                  settingsPanel.classList.remove('visible');
             }
@@ -382,10 +460,16 @@
             const savedApiKey = localStorage.getItem(API_KEY_STORAGE_NAME);
             if (savedApiKey) {
                 apiKeyInput.value = savedApiKey;
-                apiKeyInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
             updateChatUIState();
-            selectedModel = modelSelect.value; // Ensure JS model variable matches HTML on load
+            selectedModel = modelSelect.value;
+            // Use `marked` options for security and better formatting
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({
+                    breaks: true, // Add <br> on single line breaks
+                    gfm: true, // Use GitHub Flavored Markdown
+                });
+            }
         }
 
         function displayMessage(sender, text, type = 'text') {
@@ -397,9 +481,18 @@
                 messageElement.textContent = ".";
             } else if (type === 'error') {
                  messageElement.classList.add('error-message');
-                 messageElement.innerHTML = `<strong>系統提示：</strong> ${text}`;
+                 // For system messages, don't parse markdown, just show text.
+                 messageElement.innerHTML = `<strong>系統提示：</strong> ${text.replace(/\n/g, '<br>')}`;
             } else {
-                messageElement.innerHTML = text.replace(/\n/g, '<br>');
+                // If it's a gemini message and `marked` is loaded, parse markdown
+                if (sender === 'gemini' && typeof marked !== 'undefined') {
+                    // Note: For production, consider a sanitizer like DOMPurify for extra security.
+                    messageElement.innerHTML = marked.parse(text);
+                } else {
+                    // For user messages, just escape HTML and add line breaks
+                    const escapedText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    messageElement.innerHTML = escapedText.replace(/\n/g, '<br>');
+                }
             }
 
             chatBox.appendChild(messageElement);
@@ -417,6 +510,7 @@
             displayMessage('user', userText);
             conversationHistory.push({ role: "user", parts: [{ text: userText }] });
             userInput.value = '';
+            userInput.disabled = true;
             sendButton.disabled = true;
 
             const loadingMessage = displayMessage('gemini', '', 'loading');
@@ -425,7 +519,9 @@
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
                 const requestBody = {
                     contents: conversationHistory,
-                    systemInstruction: { parts: { text: "請盡量使用繁體中文來回答" } },
+                    systemInstruction: {
+                        parts: { text: "請盡量使用繁體中文來回答，並善用 Markdown 格式化你的回答 (例如使用標題、列表、粗體、程式碼區塊等) 來增加可讀性。" }
+                    },
                     generationConfig: {
                         temperature: 1,
                         topP: 0.95,
@@ -452,7 +548,7 @@
                     const errorData = await response.json();
                     const errorMessage = errorData.error?.message || `請求失敗，狀態碼：${response.status}`;
                     displayMessage('system', `API 呼叫失敗: ${errorMessage} <br><br>請確認 API 金鑰是否正確或所選模型是否可用。`, 'error');
-                    conversationHistory.pop(); 
+                    conversationHistory.pop(); // Remove the user's message from history if API call fails
                     return;
                 }
 
@@ -464,11 +560,13 @@
                     conversationHistory.push({ role: "model", parts: [{ text: geminiResponse }] });
                 } else {
                     let feedbackMessage = "API 回應了，但沒有有效的內容。";
-                    if (data.promptFeedback) {
+                    if (data.promptFeedback && data.promptFeedback.blockReason) {
                         feedbackMessage = `請求被安全設定阻擋，原因：${data.promptFeedback.blockReason}。請嘗試更換提問方式。`;
+                    } else if (data.candidates && data.candidates[0].finishReason) {
+                        feedbackMessage = `模型因 ${data.candidates[0].finishReason} 而停止生成。請嘗試調整提問。`;
                     }
                     displayMessage('system', feedbackMessage, 'error');
-                    conversationHistory.pop();
+                    conversationHistory.pop(); // Also remove user message on this error type
                 }
 
             } catch (error) {
@@ -479,6 +577,7 @@
                 displayMessage('system', `發生無法預期的錯誤：${error.message}`, 'error');
                 conversationHistory.pop();
             } finally {
+                userInput.disabled = false;
                 sendButton.disabled = false;
                 userInput.focus();
             }
