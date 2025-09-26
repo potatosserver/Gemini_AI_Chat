@@ -40,260 +40,99 @@
             --md-sys-color-surface-container-low: #f3f4f7;
         }
 
-        html {
+        /* MODIFICATION: Simplify and lock down root elements */
+        html, body {
+            margin: 0;
+            padding: 0;
             height: 100%;
+            width: 100%;
+            overflow: hidden; /* Absolutely prevent root scrolling */
+            font-family: 'Roboto', 'Noto Sans TC', sans-serif;
         }
 
         body {
-            font-family: 'Roboto', 'Noto Sans TC', sans-serif;
-            background-color: var(--md-sys-color-surface-container-low);
-            margin: 0;
-            color: var(--md-sys-color-on-surface);
-            /* Prevent body from scrolling on mobile */
-            height: 100%;
-            overflow: hidden;
+             background-color: var(--md-sys-color-surface-container-low);
         }
 
+        /* MODIFICATION: Container height will be set by JavaScript */
         #chat-container {
-            width: 100%;
-            height: 100vh;
-            /* Use dvh for better mobile handling, with vh as fallback */
-            height: 100dvh;
             background-color: var(--md-sys-color-surface);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative; /* Context for settings panel */
+            
+            /* Use a simple flexbox layout, relying on JS for the correct height */
             display: flex;
             flex-direction: column;
-            overflow: hidden;
-            position: relative;
+            width: 100%;
+            /* Height is now set dynamically by JavaScript */
         }
 
         #header {
-            background-color: var(--md-sys-color-surface);
             padding: 12px 8px 12px 24px;
             font-weight: 500;
             border-bottom: 1px solid var(--md-sys-color-surface-variant);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-shrink: 0;
+            flex-shrink: 0; /* Header will not shrink */
         }
         
-        #header .title {
-            font-size: 1.4em;
-            margin: 0;
-        }
+        #header .title { font-size: 1.4em; margin: 0; }
 
-        #settings-button {
-            z-index: 11;
-            background: none;
-            border: none;
-            border-radius: 50%;
-            width: 48px;
-            height: 48px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.2s;
-        }
-        #settings-button:hover {
-            background-color: rgba(0,0,0,0.08);
-        }
+        #settings-button { z-index: 11; background: none; border: none; border-radius: 50%; width: 48px; height: 48px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; }
+        #settings-button:hover { background-color: rgba(0,0,0,0.08); }
 
-        #settings-panel {
-            position: absolute;
-            top: 68px;
-            right: 16px;
-            background-color: var(--md-sys-color-surface-container-highest);
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            padding: 20px;
-            z-index: 10;
-            width: calc(100% - 48px); /* Mobile-first width */
-            max-width: 320px;
-            box-sizing: border-box;
-            opacity: 0;
-            transform: translateY(-10px) scale(0.95);
-            transition: opacity 0.2s ease, transform 0.2s ease;
-            pointer-events: none;
-        }
-        #settings-panel.visible {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            pointer-events: auto;
-        }
+        #settings-panel { position: absolute; top: 68px; right: 16px; background-color: var(--md-sys-color-surface-container-highest); border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 20px; z-index: 10; width: calc(100% - 48px); max-width: 320px; box-sizing: border-box; opacity: 0; transform: translateY(-10px) scale(0.95); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
+        #settings-panel.visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
         
-        /* === Styles for Form Fields === */
-        .field-container {
-             margin-bottom: 20px;
-        }
-        
-        .field-container label.static-label {
-            display: block;
-            font-size: 0.85em;
-            color: var(--md-sys-color-primary);
-            margin-bottom: 6px;
-            padding-left: 4px;
-            font-weight: 500;
-        }
-        .field-container select {
-            width: 100%;
-            padding: 16px;
-            border-radius: 8px;
-            border: 1px solid var(--md-sys-color-outline);
-            background: transparent;
-            font-size: 1em;
-            color: var(--md-sys-color-on-surface);
-            box-sizing: border-box;
-            -webkit-appearance: none;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='24' viewBox='0 -960 960 960' width='24'%3E%3Cpath fill='%2343474E' d='M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-        }
-         .field-container select:focus {
-            outline: none;
-            border-color: var(--md-sys-color-primary);
-            border-width: 2px;
-            padding: 15px; /* Adjust padding to account for border */
-        }
-
-        .m3-field {
-            position: relative;
-        }
-        .m3-field label {
-            position: absolute;
-            top: 50%;
-            left: 16px;
-            transform: translateY(-50%);
-            font-size: 1em;
-            color: var(--md-sys-color-on-surface-variant);
-            background-color: var(--md-sys-color-surface-container-highest);
-            padding: 0 4px;
-            transition: all 0.2s ease;
-            pointer-events: none;
-        }
-        .m3-field input {
-            width: 100%;
-            padding: 16px;
-            border-radius: 8px;
-            border: 1px solid var(--md-sys-color-outline);
-            background: transparent;
-            font-size: 1em;
-            color: var(--md-sys-color-on-surface);
-            box-sizing: border-box;
-        }
-        .m3-field input:focus {
-            outline: none;
-            border-color: var(--md-sys-color-primary);
-            border-width: 2px;
-            padding: 15px;
-        }
-        .m3-field input:focus + label,
-        .m3-field input:not(:placeholder-shown) + label {
-            top: 0;
-            left: 12px;
-            font-size: 0.75em;
-            color: var(--md-sys-color-primary);
-        }
-        /* === End Styles for Form Fields === */
+        .field-container { margin-bottom: 20px; }
+        .field-container label.static-label { display: block; font-size: 0.85em; color: var(--md-sys-color-primary); margin-bottom: 6px; padding-left: 4px; font-weight: 500; }
+        .field-container select { width: 100%; padding: 16px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline); background: transparent; font-size: 1em; color: var(--md-sys-color-on-surface); box-sizing: border-box; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='24' viewBox='0 -960 960 960' width='24'%3E%3Cpath fill='%2343474E' d='M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+        .field-container select:focus { outline: none; border-color: var(--md-sys-color-primary); border-width: 2px; padding: 15px; }
+        .m3-field { position: relative; }
+        .m3-field label { position: absolute; top: 50%; left: 16px; transform: translateY(-50%); font-size: 1em; color: var(--md-sys-color-on-surface-variant); background-color: var(--md-sys-color-surface-container-highest); padding: 0 4px; transition: all 0.2s ease; pointer-events: none; }
+        .m3-field input { width: 100%; padding: 16px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline); background: transparent; font-size: 1em; color: var(--md-sys-color-on-surface); box-sizing: border-box; }
+        .m3-field input:focus { outline: none; border-color: var(--md-sys-color-primary); border-width: 2px; padding: 15px; }
+        .m3-field input:focus + label, .m3-field input:not(:placeholder-shown) + label { top: 0; left: 12px; font-size: 0.75em; color: var(--md-sys-color-primary); }
 
         #chat-box {
-            flex-grow: 1;
             padding: 16px;
-            overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 12px;
+            
+            /* Core change: This will now correctly fill the space and scroll */
+            flex-grow: 1;
+            overflow-y: auto;
+            min-height: 0; /* Crucial for allowing flex item to shrink */
         }
         #chat-box::-webkit-scrollbar { width: 6px; }
         #chat-box::-webkit-scrollbar-track { background: transparent; }
         #chat-box::-webkit-scrollbar-thumb { background: var(--md-sys-color-surface-variant); border-radius: 3px; }
         #chat-box::-webkit-scrollbar-thumb:hover { background: var(--md-sys-color-outline); }
 
-        .message {
-            padding: 12px 18px;
-            border-radius: 20px;
-            max-width: 80%;
-            line-height: 1.5;
-            word-wrap: break-word;
-        }
-        .user-message {
-            background-color: var(--md-sys-color-primary-container);
-            color: var(--md-sys-color-on-primary-container);
-            align-self: flex-end;
-            border-bottom-right-radius: 6px;
-        }
-        .gemini-message {
-            background-color: var(--md-sys-color-surface-container-highest);
-            color: var(--md-sys-color-on-surface-variant);
-            align-self: flex-start;
-            border-bottom-left-radius: 6px;
-        }
-        .gemini-message.loading::after {
-            content: '...';
-            display: inline-block;
-            animation: ellipsis 1.2s infinite steps(3, end);
-        }
+        .message { padding: 12px 18px; border-radius: 20px; max-width: 80%; line-height: 1.5; word-wrap: break-word; }
+        .user-message { background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); align-self: flex-end; border-bottom-right-radius: 6px; }
+        .gemini-message { background-color: var(--md-sys-color-surface-container-highest); color: var(--md-sys-color-on-surface-variant); align-self: flex-start; border-bottom-left-radius: 6px; }
+        .gemini-message.loading::after { display: inline-block; vertical-align: bottom; animation: ellipsis 1.4s infinite; content: '.'; width: 1.2em; text-align: left; }
         @keyframes ellipsis { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
 
-        /* --- Styles for Markdown Content --- */
         .gemini-message > *:first-child { margin-top: 0; }
         .gemini-message > *:last-child { margin-bottom: 0; }
-        .gemini-message h1, .gemini-message h2, .gemini-message h3 {
-            margin: 16px 0 8px 0;
-            color: var(--md-sys-color-on-surface);
-        }
+        .gemini-message h1, .gemini-message h2, .gemini-message h3 { margin: 16px 0 8px 0; color: var(--md-sys-color-on-surface); }
         .gemini-message p { margin: 0 0 10px 0; }
         .gemini-message ul, .gemini-message ol { padding-left: 24px; margin: 0 0 10px 0;}
         .gemini-message li { margin-bottom: 4px; }
         .gemini-message a { color: var(--md-sys-color-primary); text-decoration: none; }
         .gemini-message a:hover { text-decoration: underline; }
-        .gemini-message code {
-            font-family: 'Courier New', Courier, monospace;
-            background-color: var(--md-sys-color-surface-variant);
-            padding: 2px 6px;
-            border-radius: 6px;
-            font-size: 0.9em;
-        }
-        .gemini-message pre {
-            background-color: #202124; /* A dark background for code blocks */
-            color: #e8eaed;
-            padding: 16px;
-            border-radius: 12px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        .gemini-message pre code {
-            background-color: transparent;
-            padding: 0;
-        }
-        .gemini-message table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 12px 0;
-        }
-        .gemini-message th, .gemini-message td {
-            border: 1px solid var(--md-sys-color-outline);
-            padding: 8px;
-            text-align: left;
-        }
-        .gemini-message th {
-            background-color: var(--md-sys-color-surface-container-low);
-        }
-        /* --- End Styles for Markdown Content --- */
+        .gemini-message code { font-family: 'Courier New', Courier, monospace; background-color: var(--md-sys-color-surface-variant); padding: 2px 6px; border-radius: 6px; font-size: 0.9em; }
+        .gemini-message pre { background-color: #202124; color: #e8eaed; padding: 16px; border-radius: 12px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; }
+        .gemini-message pre code { background-color: transparent; padding: 0; }
+        .gemini-message table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        .gemini-message th, .gemini-message td { border: 1px solid var(--md-sys-color-outline); padding: 8px; text-align: left; }
+        .gemini-message th { background-color: var(--md-sys-color-surface-container-low); }
 
-        .error-message {
-            background-color: var(--md-sys-color-error-container);
-            color: var(--md-sys-color-on-error-container);
-            align-self: center;
-            text-align: center;
-            border-radius: 12px;
-            font-size: 0.9em;
-            width: fit-content;
-            padding: 12px 18px; /* Ensure padding is consistent */
-        }
+        .error-message { background-color: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); align-self: center; text-align: center; border-radius: 12px; font-size: 0.9em; width: fit-content; padding: 12px 18px; }
         .error-message strong { color: var(--md-sys-color-error); }
 
         #input-container {
@@ -302,33 +141,13 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-shrink: 0; /* Input container will not shrink */
         }
-        #user-input {
-            flex-grow: 1;
-            border: 1px solid var(--md-sys-color-outline);
-            border-radius: 28px;
-            padding: 14px 20px;
-            font-size: 1em;
-            background-color: transparent;
-            transition: border-color 0.2s;
-        }
+        #user-input { flex-grow: 1; border: 1px solid var(--md-sys-color-outline); border-radius: 28px; padding: 14px 20px; font-size: 1em; background-color: transparent; transition: border-color 0.2s; }
         #user-input:focus { outline: none; border-color: var(--md-sys-color-primary); }
         #user-input:disabled { background-color: var(--md-sys-color-surface-container-low); }
 
-        #send-button {
-            background-color: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
-            border: none;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.1s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
+        #send-button { background-color: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); border: none; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; transition: background-color 0.3s, transform 0.1s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         #send-button:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         #send-button:active { transform: scale(0.95); }
         #send-button:disabled { background-color: var(--md-sys-color-surface-variant); cursor: not-allowed; box-shadow: none; }
@@ -342,26 +161,21 @@
             }
 
             #chat-container {
-                width: 90%;
-                max-width: 800px;
                 height: 95vh;
                 max-height: 1000px;
+                width: 90%;
+                max-width: 800px;
                 border-radius: 28px;
-            }
-
-            #settings-panel {
-                width: 300px; /* Restore fixed width for desktop */
             }
         }
     </style>
 </head>
 <body>
-
     <div id="chat-container">
         <div id="header">
             <h1 class="title">Gemini Chat</h1>
             <button id="settings-button" title="設定">
-                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#43474E"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#43474E"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39-.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
             </button>
         </div>
 
@@ -369,7 +183,6 @@
             <div class="field-container">
                 <label for="model-select" class="static-label">選擇模型</label>
                 <select id="model-select">
-                    <!-- === RESTORED MODEL LIST === -->
                     <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                     <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                     <option value="gemini-2.5-flash-lite" selected>Gemini 2.5 Flash-Lite (預設)</option>
@@ -378,16 +191,17 @@
                 </select>
             </div>
             <div class="field-container m3-field">
-                <input type="password" id="api-key-input" placeholder=" "> <!-- placeholder is for floating label trick -->
+                <input type="password" id="api-key-input" placeholder=" " autocomplete="new-password"> 
                 <label for="api-key-input">Google AI API 金鑰</label>
             </div>
         </div>
-
+        
         <div id="chat-box">
-             <div class="message gemini-message">你好！請點擊右上角的設定圖示來輸入 API 金鑰，然後開始對話。</div>
+            <div class="message gemini-message">你好！請點擊右上角的設定圖示來輸入 API 金鑰，然後開始對話。</div>
         </div>
+
         <div id="input-container">
-            <input type="text" id="user-input" placeholder="請先輸入 API 金鑰" disabled>
+            <input type="text" id="user-input" placeholder="請先輸入 API 金鑰" disabled autocomplete="off">
             <button id="send-button" disabled title="傳送">
                 <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#ffffff"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2 .01 7z"/></svg>
             </button>
@@ -405,7 +219,6 @@
         const chatContainer = document.getElementById('chat-container');
 
         let conversationHistory = [];
-        // === RESTORED DEFAULT MODEL VARIABLE ===
         let selectedModel = 'gemini-2.5-flash-lite';
         const API_KEY_STORAGE_NAME = 'gemini_api_key';
 
@@ -449,6 +262,14 @@
 
         // --- Functions ---
 
+        // MODIFICATION: New function to handle viewport resizing
+        function handleViewportResize() {
+            // Get the reliable height from the visual viewport
+            const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            // Force the container to take this exact height
+            chatContainer.style.height = `${viewportHeight}px`;
+        }
+
         function updateChatUIState() {
             const hasApiKey = apiKeyInput.value.trim() !== '';
             userInput.disabled = !hasApiKey;
@@ -463,13 +284,22 @@
             }
             updateChatUIState();
             selectedModel = modelSelect.value;
-            // Use `marked` options for security and better formatting
             if (typeof marked !== 'undefined') {
                 marked.setOptions({
-                    breaks: true, // Add <br> on single line breaks
-                    gfm: true, // Use GitHub Flavored Markdown
+                    breaks: true,
+                    gfm: true,
                 });
             }
+
+            // MODIFICATION: Set up the resize listener
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', handleViewportResize);
+            } else {
+                window.addEventListener('resize', handleViewportResize);
+            }
+
+            // Set the initial size
+            handleViewportResize();
         }
 
         function displayMessage(sender, text, type = 'text') {
@@ -478,24 +308,21 @@
             
             if (type === 'loading') {
                 messageElement.classList.add('loading');
-                messageElement.textContent = ".";
+                messageElement.textContent = "生成中";
             } else if (type === 'error') {
                  messageElement.classList.add('error-message');
-                 // For system messages, don't parse markdown, just show text.
                  messageElement.innerHTML = `<strong>系統提示：</strong> ${text.replace(/\n/g, '<br>')}`;
             } else {
-                // If it's a gemini message and `marked` is loaded, parse markdown
                 if (sender === 'gemini' && typeof marked !== 'undefined') {
-                    // Note: For production, consider a sanitizer like DOMPurify for extra security.
                     messageElement.innerHTML = marked.parse(text);
                 } else {
-                    // For user messages, just escape HTML and add line breaks
                     const escapedText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                     messageElement.innerHTML = escapedText.replace(/\n/g, '<br>');
                 }
             }
 
             chatBox.appendChild(messageElement);
+            // Scroll to bottom after a message is added
             chatBox.scrollTop = chatBox.scrollHeight;
             return messageElement;
         }
@@ -548,7 +375,7 @@
                     const errorData = await response.json();
                     const errorMessage = errorData.error?.message || `請求失敗，狀態碼：${response.status}`;
                     displayMessage('system', `API 呼叫失敗: ${errorMessage} <br><br>請確認 API 金鑰是否正確或所選模型是否可用。`, 'error');
-                    conversationHistory.pop(); // Remove the user's message from history if API call fails
+                    conversationHistory.pop();
                     return;
                 }
 
@@ -566,7 +393,7 @@
                         feedbackMessage = `模型因 ${data.candidates[0].finishReason} 而停止生成。請嘗試調整提問。`;
                     }
                     displayMessage('system', feedbackMessage, 'error');
-                    conversationHistory.pop(); // Also remove user message on this error type
+                    conversationHistory.pop();
                 }
 
             } catch (error) {
