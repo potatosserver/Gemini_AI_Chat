@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts for Material Symbols -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
     <!-- Marked.js for Markdown Parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
@@ -81,6 +83,12 @@
 
         #settings-button { z-index: 11; background: none; border: none; border-radius: 50%; width: 48px; height: 48px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; }
         #settings-button:hover { background-color: rgba(0,0,0,0.08); }
+        
+        /* Style for the new Material Symbols icon */
+        #settings-button .material-symbols-outlined {
+            font-size: 24px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
 
         #settings-panel { position: absolute; top: 68px; right: 16px; background-color: var(--md-sys-color-surface-container-highest); border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 20px; z-index: 10; width: calc(100% - 48px); max-width: 320px; box-sizing: border-box; opacity: 0; transform: translateY(-10px) scale(0.95); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none; }
         #settings-panel.visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
@@ -151,6 +159,10 @@
         #send-button:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         #send-button:active { transform: scale(0.95); }
         #send-button:disabled { background-color: var(--md-sys-color-surface-variant); cursor: not-allowed; box-shadow: none; }
+        
+        #send-button .material-symbols-outlined {
+            font-size: 24px;
+        }
 
         /* Desktop view adjustments */
         @media (min-width: 801px) {
@@ -175,7 +187,7 @@
         <div id="header">
             <h1 class="title">Gemini Chat</h1>
             <button id="settings-button" title="設定">
-                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#43474E"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12-.64l2 3.46c.12.22.39-.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+                <span class="material-symbols-outlined">settings</span>
             </button>
         </div>
 
@@ -203,7 +215,7 @@
         <div id="input-container">
             <input type="text" id="user-input" placeholder="請先輸入 API 金鑰" disabled autocomplete="off">
             <button id="send-button" disabled title="傳送">
-                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#ffffff"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2 .01 7z"/></svg>
+                <span class="material-symbols-outlined">send</span>
             </button>
         </div>
     </div>
