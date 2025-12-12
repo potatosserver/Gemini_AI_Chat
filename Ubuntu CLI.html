@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ubuntu Terminal (Copy/Paste)</title>
+    <!-- Ubuntu Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&family=Ubuntu:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #300a24;
+            --text-color: #ffffff;
+            --prompt-user: #87ff00;
+            --prompt-path: #3465a4;
+            --cursor-color: #ffffff;
+            --font-family: 'Ubuntu Mono', monospace;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            font-size: 18px;
+            overflow: hidden;
+            /* 禁止瀏覽器預設的選取行為，但在 code 區域允許選取 */
+            user-select: none; 
+        }
+
+        #terminal-container {
+            padding: 10px;
+            height: 100%;
+            box-sizing: border-box;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #terminal-container::-webkit-scrollbar { width: 8px; }
+        #terminal-container::-webkit-scrollbar-track { background: var(--bg-color); }
+        #terminal-container::-webkit-scrollbar-thumb { background: #5e2750; border-radius: 4px; }
+
+        #output {
+            flex-grow: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.3;
+            /* 允許使用者選取輸出內容以便複製 */
+            user-select: text;
+        }
+
+        .command-line {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            min-height: 24px; 
+        }
+
+        .prompt {
+            white-space: nowrap;
+            margin-right: 8px;
+            user-select: none; /* 提示詞不給選，避免複製到垃圾資訊 */
+        }
+        
+        .prompt-user { color: var(--prompt-user); font-weight: bold; }
+        .prompt-sep { color: var(--text-color); }
+        .prompt-path { color: var(--prompt-path); font-weight: bold; }
+
+        #cmd-input {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-family: var(--font-family);
+            font-size: 18px;
+            flex-grow: 1;
+            outline: none;
+            caret-color: var(--cursor-color);
+            padding: 0;
+            margin: 0;
+        }
+
+        .error { color: #ff5555; }
+        .system-msg { color: #fce94f; }
+        .ai-response { color: #87cefa; }
+        .debug-msg { color: #00ffff; font-size: 0.9em; margin-top: 5px; margin-bottom: 5px; }
+        .gray { color: #888888; }
+        
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear { display: none; }
+    </style>
+</head>
+<body>
+    <div id="terminal-container" onclick="focusInput()">
+        <div id="output"></div>
+        <div class="command-line" id="input-line">
+            <span class="prompt" id="prompt-span">
+                <span class="prompt-user">root@ubuntu</span><span class="prompt-sep">:</span><span class="prompt-path">~</span><span class="prompt-sep">#</span>
+            </span>
+            <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" autofocus>
+        </div>
+    </div>
+
+    <script>
+        const MODEL_NAME = 'gemini-2.5-flash-lite'; 
+        const CONFIG_CMD_PREFIX = 'setsys';
+        const AI_CMD_PREFIX = 'ai';
+        const API_KEY_STORAGE = 'gemini_terminal_key_v25';
+
+        const DEFAULT_SYSTEM_PROMPT = `
+ROLE: Ubuntu Linux 24.04 CLI Simulator
+USER: root (Superuser)
+HOSTNAME: ubuntu
+CURRENT_DIR: /root (displayed as ~)
+
+STRICT SIMULATION RULES:
+1. PATH RESOLUTION LOGIC:
+   - The Root Directory is \`/\`.
+   - \`cd ..\` from \`/\` stays at \`/\`.
+   - Interpret relative paths mathematically.
+2. PERMISSIONS:
+   - You are ROOT. You have permission to access EVERYTHING.
+   - NEVER output "Permission denied" for standard navigation.
+3. FILESYSTEM:
+   - Simulate a standard Linux file tree.
+4. OUTPUT FORMAT:
+   - Output ONLY raw stdout/stderr.
+   - NO Markdown.
+   - NO conversational text.
+5. STATE TRACKING:
+   - You must mentally track the current directory.
+`;
+        
+        const AI_HELPER_PROMPT = `
+You are a helpful AI assistant integrated into a Linux terminal.
+RULES:
+1. Answer helpfully and directly.
+2. USE TRADITIONAL CHINESE (繁體中文).
+3. Do NOT simulate a file system.
+4. Markdown allowed.
+`;
+
+        let currentSystemInstruction = DEFAULT_SYSTEM_PROMPT;
+        
+        const outputDiv = document.getElementById('output');
+        const cmdInput = document.getElementById('cmd-input');
+        const terminalContainer = document.getElementById('terminal-container');
+        const promptSpan = document.getElementById('prompt-span');
+        const inputLine = document.getElementById('input-line');
+
+        let awaitingApiKey = false;
+        let commandHistory = [];
+        let historyIndex = -1;
+        let currentPath = '~'; 
+
+        // --- NEW: Copy/Paste Logic ---
+        
+        // 1. 封鎖預設右鍵選單
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+
+        // 2. 處理右鍵點擊 (mouseup)
+        document.addEventListener('mouseup', async (e) => {
+            // e.button === 2 代表右鍵
+            if (e.button === 2) {
+                const selection = window.getSelection().toString();
+
+                if (selection.length > 0) {
+                    // --- 情況 A: 有選取文字 -> 執行複製 ---
+                    try {
+                        await navigator.clipboard.writeText(selection);
+                        // 複製成功後，清除選取範圍 (給使用者已完成的感覺)
+                        window.getSelection().removeAllRanges();
+                    } catch (err) {
+                        console.error('Copy failed:', err);
+                    }
+                } else {
+                    // --- 情況 B: 沒選取文字 -> 執行貼上 ---
+                    // 只有當輸入框顯示時才允許貼上
+                    if (inputLine.style.display !== 'none') {
+                        try {
+                            // 讀取剪貼簿
+                            const text = await navigator.clipboard.readText();
+                            if (text) {
+                                // 將文字插入輸入框游標位置 (或直接附加在後面)
+                                cmdInput.value = cmdInput.value + text;
+                                cmdInput.focus();
+                            }
+                        } catch (err) {
+                            // 瀏覽器可能會因為權限問題擋住，通常第一次會詢問
+                            console.error('Paste failed (permission?):', err);
+                        }
+                    }
+                }
+            }
+        });
+
+        function init() {
+            printLine("Welcome to Ubuntu 24.04 LTS (GNU/Linux 6.8.0-31-generic x86_64)");
+            printLine(" * Documentation:  https://help.ubuntu.com");
+            printLine(" * Management:     https://landscape.canonical.com");
+            printLine(" * Support:        https://ubuntu.com/pro");
+            printLine(` * System Model:   ${MODEL_NAME}\n`, "gray");
+            
+            const savedKey = localStorage.getItem(API_KEY_STORAGE);
+            
+            if (savedKey) {
+                inputLine.style.display = 'none';
+                printLine("[System] Verifying cached credentials...", "gray");
+                
+                verifyApiKeyWithRequest(savedKey).then(result => {
+                    if (result.success) {
+                        printLine(`Last login: ${new Date().toString().split('(')[0]}`);
+                        updatePromptState('shell'); 
+                    } else {
+                        printLine(`[Auth Error] Cached key invalid.`, "debug-msg");
+                        localStorage.removeItem(API_KEY_STORAGE);
+                        initLoginProcess();
+                    }
+                });
+            } else {
+                initLoginProcess();
+            }
+        }
+
+        function initLoginProcess() {
+            printLine("ubuntu login: root");
+            promptForApiKey();
+        }
+
+        function promptForApiKey() {
+            awaitingApiKey = true;
+            updatePromptState('password');
+        }
+
+        function focusInput() {
+            // 如果正在選取文字，不要強制 focus，以免打斷選取操作
+            const selection = window.getSelection().toString();
+            if (inputLine.style.display !== 'none' && selection.length === 0) {
+                cmdInput.focus();
+            }
+        }
+
+        function printLine(text, className = '') {
+            const line = document.createElement('div');
+            line.textContent = text;
+            if (className) line.className = className;
+            outputDiv.appendChild(line);
+            scrollToBottom();
+        }
+
+        function appendToOutput(htmlContent) {
+            const div = document.createElement('div');
+            div.innerHTML = htmlContent;
+            outputDiv.appendChild(div);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            terminalContainer.scrollTop = terminalContainer.scrollHeight;
+        }
+
+        function updatePromptState(state) {
+            if (state === 'shell') {
+                promptSpan.innerHTML = `<span class="prompt-user">root@ubuntu</span><span class="prompt-sep">:</span><span class="prompt-path">${currentPath}</span><span class="prompt-sep">#</span>`;
+                cmdInput.type = 'text';
+                cmdInput.value = '';
+            } else if (state === 'password') {
+                promptSpan.innerHTML = 'Password: ';
+                promptSpan.className = 'prompt';
+                cmdInput.type = 'password';
+                cmdInput.value = '';
+            }
+            inputLine.style.display = 'flex';
+            cmdInput.focus();
+        }
+
+        cmdInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const inputValue = cmdInput.value;
+                const promptHtml = promptSpan.innerHTML;
+                
+                if (awaitingApiKey) {
+                    appendToOutput(promptHtml); 
+                } else {
+                    appendToOutput(`${promptHtml} ${inputValue.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`);
+                }
+
+                inputLine.style.display = 'none';
+
+                if (!awaitingApiKey && inputValue.trim() !== '') {
+                    commandHistory.push(inputValue);
+                    historyIndex = commandHistory.length;
+                }
+
+                if (awaitingApiKey) {
+                    await handleApiKeyInput(inputValue);
+                } else {
+                    if (inputValue.trim() === '') {
+                        updatePromptState('shell');
+                    } else {
+                        await handleCommand(inputValue);
+                    }
+                }
+                
+                cmdInput.value = '';
+            } else if (e.key === 'ArrowUp') {
+                if (!awaitingApiKey && historyIndex > 0) {
+                    historyIndex--;
+                    cmdInput.value = commandHistory[historyIndex];
+                    e.preventDefault();
+                }
+            } else if (e.key === 'ArrowDown') {
+                if (!awaitingApiKey) {
+                    if (historyIndex < commandHistory.length - 1) {
+                        historyIndex++;
+                        cmdInput.value = commandHistory[historyIndex];
+                    } else {
+                        historyIndex = commandHistory.length;
+                        cmdInput.value = '';
+                    }
+                }
+            }
+        });
+
+        async function handleApiKeyInput(key) {
+            const trimmedKey = key.trim();
+            
+            if (trimmedKey.length === 0) {
+                 printLine("Login incorrect", "error");
+                 initLoginProcess();
+                 return;
+            }
+
+            printLine("[System] Authenticating...", "gray");
+            
+            const result = await verifyApiKeyWithRequest(trimmedKey);
+
+            if (result.success) {
+                localStorage.setItem(API_KEY_STORAGE, trimmedKey);
+                awaitingApiKey = false;
+                printLine(""); 
+                printLine(`Last login: ${new Date().toString().split('(')[0]} from 10.0.0.1`);
+                updatePromptState('shell');
+            } else {
+                printLine("Login incorrect", "error");
+                initLoginProcess();
+            }
+        }
+
+        async function verifyApiKeyWithRequest(apiKey) {
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ role: "user", parts: [{ text: "echo verify" }] }],
+                        generationConfig: { maxOutputTokens: 1 }
+                    })
+                });
+
+                if (response.ok) {
+                    return { success: true };
+                } else {
+                    let errorDetails = `HTTP ${response.status} ${response.statusText}`;
+                    try {
+                        const errorJson = await response.json();
+                        errorDetails += "\n" + JSON.stringify(errorJson, null, 2);
+                    } catch (e) {}
+                    return { success: false, errorMsg: errorDetails };
+                }
+            } catch (e) {
+                return { success: false, errorMsg: `Network Error: ${e.message}` };
+            }
+        }
+
+        async function handleCommand(cmd) {
+            const trimmedCmd = cmd.trim();
+            const firstSpaceIndex = trimmedCmd.indexOf(' ');
+            const mainCmd = firstSpaceIndex === -1 ? trimmedCmd : trimmedCmd.substring(0, firstSpaceIndex);
+            const args = firstSpaceIndex === -1 ? '' : trimmedCmd.substring(firstSpaceIndex + 1);
+
+            if (mainCmd === 'clear') {
+                outputDiv.innerHTML = '';
+                updatePromptState('shell');
+                return;
+            }
+
+            if (mainCmd === 'exit' || mainCmd === 'logout') {
+                localStorage.removeItem(API_KEY_STORAGE);
+                outputDiv.innerHTML = '';
+                printLine("logout");
+                initLoginProcess(); 
+                return;
+            }
+
+            if (mainCmd === CONFIG_CMD_PREFIX) {
+                if (args.trim() === "") {
+                    printLine(`usage: ${CONFIG_CMD_PREFIX} <new_system_instruction>`, "error");
+                } else {
+                    currentSystemInstruction = args;
+                    printLine(`[System] Configuration reloaded.`, 'system-msg');
+                }
+                updatePromptState('shell');
+                return;
+            }
+
+            if (mainCmd === AI_CMD_PREFIX) {
+                if (args.trim() === "") {
+                    printLine(`usage: ai <prompt> (Ask Gemini AI in Traditional Chinese)`, "error");
+                    updatePromptState('shell');
+                    return;
+                }
+                await sendToGemini(args, AI_HELPER_PROMPT, 'ai-response');
+                return;
+            }
+
+            await sendToGemini(trimmedCmd, null, '');
+        }
+
+        async function sendToGemini(userCommand, overrideInstruction = null, responseClass = '') {
+            const apiKey = localStorage.getItem(API_KEY_STORAGE);
+            
+            const systemPromptToUse = overrideInstruction || currentSystemInstruction;
+            let finalUserPrompt = userCommand;
+            if (!overrideInstruction) {
+                 finalUserPrompt = `My current prompt is "root@ubuntu:${currentPath}#". User executes: "${userCommand}"`;
+            }
+
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            role: "user",
+                            parts: [{ text: finalUserPrompt }]
+                        }],
+                        systemInstruction: {
+                            parts: { text: systemPromptToUse }
+                        },
+                        generationConfig: {
+                            temperature: overrideInstruction ? 0.7 : 0.1,
+                            maxOutputTokens: 4096
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    let errorText = `bash: API Error ${response.status}`;
+                    try {
+                        const err = await response.json();
+                        if (err.error && err.error.message) {
+                             errorText += `: ${err.error.message}`;
+                        }
+                    } catch(e) {}
+                    printLine(errorText, 'error');
+                } else {
+                    const data = await response.json();
+                    if (data.candidates && data.candidates[0].content) {
+                        let text = data.candidates[0].content.parts[0].text;
+                        
+                        if (!overrideInstruction) {
+                            text = text.replace(/^```[a-z]*\n/gm, '').replace(/```$/gm, '');
+                            text = text.trimEnd();
+                        } else {
+                            text = text.trim();
+                        }
+
+                        if (!overrideInstruction && userCommand.startsWith('cd ') && !text.includes('No such file') && !text.includes('bash:')) {
+                            let target = userCommand.split(/\s+/)[1];
+                            if (target) {
+                                if (target === '/') currentPath = '/';
+                                else if (target === '~') currentPath = '~';
+                                else if (target === '..') {
+                                    if (currentPath === '~') currentPath = '/';
+                                    else if (currentPath === '/') currentPath = '/';
+                                    else {
+                                        const parts = currentPath.split('/');
+                                        parts.pop();
+                                        currentPath = parts.join('/') || '/';
+                                    }
+                                } else if (target.startsWith('../')) {
+                                     if (currentPath === '~' || currentPath === '/root') currentPath = '/';
+                                } else {
+                                    if (currentPath === '/') currentPath = '/' + target;
+                                    else if (currentPath === '~') currentPath = '/root/' + target;
+                                    else currentPath = currentPath + '/' + target;
+                                }
+                            }
+                            if (currentPath === '/root') currentPath = '~';
+                        }
+                        
+                        if (text) printLine(text, responseClass); 
+
+                    } else {
+                        printLine("bash: command terminated by safety filter", 'error');
+                    }
+                }
+
+            } catch (error) {
+                printLine(`bash: internal error: ${error.message}`, 'error');
+            } finally {
+                updatePromptState('shell');
+            }
+        }
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                terminalContainer.style.height = `${window.visualViewport.height}px`;
+                scrollToBottom();
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
