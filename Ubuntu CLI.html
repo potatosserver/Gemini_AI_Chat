@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ubuntu Terminal (Copy/Paste)</title>
+    <title>Ubuntu Terminal (No Password Prompt)</title>
     <!-- Ubuntu Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,7 +28,6 @@
             font-family: var(--font-family);
             font-size: 18px;
             overflow: hidden;
-            /* 禁止瀏覽器預設的選取行為，但在 code 區域允許選取 */
             user-select: none; 
         }
 
@@ -50,7 +49,6 @@
             white-space: pre-wrap;
             word-break: break-all;
             line-height: 1.3;
-            /* 允許使用者選取輸出內容以便複製 */
             user-select: text;
         }
 
@@ -64,7 +62,7 @@
         .prompt {
             white-space: nowrap;
             margin-right: 8px;
-            user-select: none; /* 提示詞不給選，避免複製到垃圾資訊 */
+            user-select: none;
         }
         
         .prompt-user { color: var(--prompt-user); font-weight: bold; }
@@ -83,15 +81,25 @@
             padding: 0;
             margin: 0;
         }
+        
+        /* 
+           關鍵修改：
+           當輸入框加上 .password-mode 類別時，使用 CSS 將文字遮罩。
+           這讓 input type 可以保持為 "text"，騙過 Google Chrome 不跳出密碼儲存提示。
+        */
+        #cmd-input.password-mode {
+            /* Chrome, Safari, Edge 支援：顯示為圓點 */
+            -webkit-text-security: disc;
+            
+            /* 如果您想要像真正的 Linux 一樣輸入密碼時「什麼都不顯示」，請取消註解下面這行： */
+            /* color: transparent; text-shadow: none; */
+        }
 
         .error { color: #ff5555; }
         .system-msg { color: #fce94f; }
         .ai-response { color: #87cefa; }
         .debug-msg { color: #00ffff; font-size: 0.9em; margin-top: 5px; margin-bottom: 5px; }
         .gray { color: #888888; }
-        
-        input[type="password"]::-ms-reveal,
-        input[type="password"]::-ms-clear { display: none; }
     </style>
 </head>
 <body>
@@ -101,7 +109,13 @@
             <span class="prompt" id="prompt-span">
                 <span class="prompt-user">root@ubuntu</span><span class="prompt-sep">:</span><span class="prompt-path">~</span><span class="prompt-sep">#</span>
             </span>
-            <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" autofocus>
+            <!-- 
+               關鍵修改：
+               1. type 改為 "text"
+               2. name 改為隨機名稱，避免瀏覽器自動填入
+               3. autocomplete="off"
+            -->
+            <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" name="cli_input_field_random" autofocus>
         </div>
     </div>
 
@@ -157,44 +171,25 @@ RULES:
         let historyIndex = -1;
         let currentPath = '~'; 
 
-        // --- NEW: Copy/Paste Logic ---
-        
-        // 1. 封鎖預設右鍵選單
-        document.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-        });
-
-        // 2. 處理右鍵點擊 (mouseup)
+        // 右鍵邏輯
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
         document.addEventListener('mouseup', async (e) => {
-            // e.button === 2 代表右鍵
             if (e.button === 2) {
                 const selection = window.getSelection().toString();
-
                 if (selection.length > 0) {
-                    // --- 情況 A: 有選取文字 -> 執行複製 ---
                     try {
                         await navigator.clipboard.writeText(selection);
-                        // 複製成功後，清除選取範圍 (給使用者已完成的感覺)
                         window.getSelection().removeAllRanges();
-                    } catch (err) {
-                        console.error('Copy failed:', err);
-                    }
+                    } catch (err) {}
                 } else {
-                    // --- 情況 B: 沒選取文字 -> 執行貼上 ---
-                    // 只有當輸入框顯示時才允許貼上
                     if (inputLine.style.display !== 'none') {
                         try {
-                            // 讀取剪貼簿
                             const text = await navigator.clipboard.readText();
                             if (text) {
-                                // 將文字插入輸入框游標位置 (或直接附加在後面)
                                 cmdInput.value = cmdInput.value + text;
                                 cmdInput.focus();
                             }
-                        } catch (err) {
-                            // 瀏覽器可能會因為權限問題擋住，通常第一次會詢問
-                            console.error('Paste failed (permission?):', err);
-                        }
+                        } catch (err) {}
                     }
                 }
             }
@@ -239,7 +234,6 @@ RULES:
         }
 
         function focusInput() {
-            // 如果正在選取文字，不要強制 focus，以免打斷選取操作
             const selection = window.getSelection().toString();
             if (inputLine.style.display !== 'none' && selection.length === 0) {
                 cmdInput.focus();
@@ -265,16 +259,22 @@ RULES:
             terminalContainer.scrollTop = terminalContainer.scrollHeight;
         }
 
+        // 修改後的狀態更新邏輯
         function updatePromptState(state) {
             if (state === 'shell') {
                 promptSpan.innerHTML = `<span class="prompt-user">root@ubuntu</span><span class="prompt-sep">:</span><span class="prompt-path">${currentPath}</span><span class="prompt-sep">#</span>`;
-                cmdInput.type = 'text';
+                
+                // 恢復為一般文字輸入模式
                 cmdInput.value = '';
+                cmdInput.classList.remove('password-mode'); 
+                
             } else if (state === 'password') {
                 promptSpan.innerHTML = 'Password: ';
                 promptSpan.className = 'prompt';
-                cmdInput.type = 'password';
+                
+                // 進入密碼模式：加上 class 來遮罩文字 (雖然 type 還是 text)
                 cmdInput.value = '';
+                cmdInput.classList.add('password-mode');
             }
             inputLine.style.display = 'flex';
             cmdInput.focus();
